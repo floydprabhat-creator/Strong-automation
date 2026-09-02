@@ -184,8 +184,10 @@ manual retry to recover from what was really just "the VPN was off."
 | Git access (SSH key or token) | worker | existing local Git config / SSH agent |
 | Dealership platform logins | — | **Dashlane only**, never in env or Appwrite |
 
-- Nothing here is committed. Verify `.gitignore` covers `.env*` before the first
-  real credential is added.
+- Nothing here is committed. `.gitignore` covers `.env*` with a single exception
+  for the generated `.env.example`. Variables are declared in `src/lib/env/spec.ts`
+  and validated with `npm run env:check`; storage guidance lives in
+  [../env-and-secrets.md](../env-and-secrets.md).
 - The Appwrite API key must never reach the browser bundle — keep all privileged
   Appwrite calls in the worker or in server-side Next.js code.
 

@@ -115,7 +115,14 @@ trip a **circuit breaker** that stops the worker rather than draining the queue.
 
 ## Integration Approach
 
-- Podio API (OAuth2 app auth). Poll for eligible items; no webhook assumed.
+- Podio API. **Authentication is the authorization-code flow as the operator**
+  (`PODIO_AUTH_MODE=user`), not app auth: app tokens require admin rights on each
+  app, and are scoped to a single app — so they cannot read the linked Content
+  Page records that [02](02-git-integration.md) matches files on. Run
+  `npm run podio:auth` once; the refresh token is then renewed unattended
+  ([../env-and-secrets.md](../env-and-secrets.md)). App auth stays supported for
+  the day a workspace admin can issue tokens for both apps.
+- Poll for eligible items; no webhook assumed.
 - Filter server-side by status + due-date range where the API allows, then apply
   the assignee rule, to avoid pulling 15k items.
 - Treat Podio as authoritative for job *intent* and for dealership data (Client
@@ -123,6 +130,11 @@ trip a **circuit breaker** that stops the worker rather than draining the queue.
 
 ## Open Questions
 
+- **Under user auth, writes are attributed to the operator's own Podio account.**
+  The `Assigned To` field already has a `Rubico` option, which suggests the client
+  expects the automation to act as an identity of its own. A dedicated Podio user
+  for the automation would fix attribution and remove the dependency on one
+  person's guest access — worth raising with the client.
 - **What does the `Playwright` assignee option mean?** If it marks jobs already
   handled by an existing automation, the tool must keep excluding it (current
   rule does). Worth confirming it isn't meant to be *this* tool's marker.

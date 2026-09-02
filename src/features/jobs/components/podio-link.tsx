@@ -1,4 +1,5 @@
 import { IconExternal } from "@/components/ui/icons";
+import { podioItemUrl } from "@/lib/env/public";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -19,7 +20,7 @@ export function PodioLink({
 }) {
   return (
     <a
-      href={`https://podio.com/strongdevs/html-page-jobs/apps/html-page-jobs/items/${podioItemId}`}
+      href={podioItemUrl(podioItemId)}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
