@@ -15,6 +15,24 @@ automation engine never needs to know *how* WordPress differs from Dealer.com.
 | Auto Go | WordPress (`wp-admin`) | shares the WordPress adapter |
 | Fox Dealer | WordPress (`wp-admin`) | shares the WordPress adapter |
 
+### Scope is fixed at these five
+
+The live Podio `Platform` dropdown holds **27 options**, several of them
+high-volume — a sample of the 200 most recently edited jobs ran Dealer.com 87,
+**Dealer Inspire 35**, **DealerOn 22**, Dealer eProcess 13, Fox Dealer 10,
+AutoGo 9, Apollo 3.
+
+Everything outside the five above is **out of scope by decision, not by
+omission**. Jobs on other platforms are excluded in the Podio query itself
+(`platform` filter in `src/lib/data/podio-source.ts`), so they are never
+fetched, rendered, counted, or published to. The single source of truth for the
+list is `ADAPTER_BY_PLATFORM` in `src/lib/integrations/podio/map.ts`; widening
+scope means adding an entry there *and* building the adapter behind it.
+
+Two details worth knowing when matching the dropdown text: the option reads
+**`AutoGo`**, not "Auto Go", and there is a separate generic **`WordPress`**
+option that is *not* one of the five.
+
 **This is two families, not five one-offs** — three proprietary CMSes each needing
 their own Playwright work, and two WordPress installs that should share one
 adapter parameterised by config (base URL, theme/builder quirks, field locations)

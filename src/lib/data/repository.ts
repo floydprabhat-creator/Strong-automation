@@ -1,9 +1,12 @@
 /**
  * Data access layer — the ONLY module that knows where data comes from.
  *
- * Today it reads the in-memory fixtures in `./fixtures.ts`. When Appwrite is
- * provisioned (docs/features/05-appwrite-data-layer.md), reimplement these
- * functions against the Appwrite SDK and nothing else in the app changes.
+ * Two sources today, chosen by `DATA_SOURCE`:
+ *  - `fixtures` (default) — the in-memory data in `./fixtures.ts`
+ *  - `podio` — live jobs read from Podio via `./podio-source.ts`
+ *
+ * When Appwrite is provisioned (docs/features/05-appwrite-data-layer.md), it
+ * becomes the third and final source, and both of these go away.
  *
  * Every function is async so the swap doesn't change any call site.
  *
@@ -13,6 +16,7 @@
  * to Appwrite instead.
  */
 
+import { podioJobDetail, podioSnapshot } from "./podio-source";
 import {
   attempts as attemptFixtures,
   dealerships as dealershipFixtures,
@@ -41,6 +45,20 @@ import type {
   PlatformBreakdownRow,
   QueueStats,
 } from "@/lib/types/views";
+
+/**
+ * Live Podio mode. It can serve job lists and counts, but not attempts, logs,
+ * failure evidence or any mutation — those live in Appwrite, which doesn't
+ * exist yet. Screens needing them render empty rather than fabricating state.
+ */
+const usePodio = process.env.DATA_SOURCE?.trim() === "podio";
+
+function requiresAppwrite(action: string): never {
+  throw new Error(
+    `${action} needs the Appwrite job store, which isn't provisioned yet. ` +
+      `Unset DATA_SOURCE=podio to use fixtures.`,
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /* Mutable store                                                              */
@@ -78,10 +96,12 @@ function toView(job: Job): JobView {
 /* -------------------------------------------------------------------------- */
 
 export async function listPlatforms(): Promise<Platform[]> {
+  if (usePodio) return (await podioSnapshot()).platforms;
   return platformFixtures;
 }
 
 export async function listDealerships(): Promise<Dealership[]> {
+  if (usePodio) return (await podioSnapshot()).dealerships;
   return dealershipFixtures;
 }
 
@@ -93,11 +113,12 @@ export async function listJobs(filters: JobFilters = {}): Promise<JobView[]> {
   const { status = "all", platformId = "all", dealershipId = "all", q } = filters;
   const needle = q?.trim().toLowerCase();
 
-  return store.jobs
+  const rows = usePodio ? (await podioSnapshot()).jobs : store.jobs.map(toView);
+
+  return rows
     .filter((job) => (status === "all" ? true : job.status === status))
     .filter((job) => (platformId === "all" ? true : job.platformId === platformId))
     .filter((job) => (dealershipId === "all" ? true : job.dealershipId === dealershipId))
-    .map(toView)
     .filter((job) => {
       if (!needle) return true;
       return (
@@ -111,6 +132,15 @@ export async function listJobs(filters: JobFilters = {}): Promise<JobView[]> {
 }
 
 export async function getJobDetail(id: string): Promise<JobDetailView | null> {
+  if (usePodio) {
+    // Read the item in full so the attachment name is populated, falling back to
+    // the cached list row if the item has gone (deleted, or no longer in scope).
+    const job =
+      (await podioJobDetail(id)) ?? (await podioSnapshot()).jobs.find((j) => j.id === id);
+    // Attempts, logs and the source diff are Appwrite records; there are none yet.
+    return job ? { job, attempts: [], logs: [], sourceReview: null } : null;
+  }
+
   const job = store.jobs.find((j) => j.id === id);
   if (!job) return null;
 
@@ -136,6 +166,15 @@ function latestAttemptFor(jobId: string): Attempt | null {
 
 /** Failed jobs grouped by error class — one root cause usually spans several. */
 export async function listFailureGroups(): Promise<FailureGroup[]> {
+  if (usePodio) {
+    // Podio keeps no record of why anything failed — an `Alert` item is all we
+    // can see, with no attempt behind it (docs/features/01-podio-integration.md).
+    const rows: FailureRow[] = (await podioSnapshot()).jobs
+      .filter((job) => job.status === "failed")
+      .map((job) => ({ job, latestAttempt: null }));
+    return rows.length > 0 ? [{ errorClass: "unknown", rows }] : [];
+  }
+
   const rows: FailureRow[] = store.jobs
     .filter((j) => j.status === "failed")
     .map((job) => ({ job: toView(job), latestAttempt: latestAttemptFor(job.id) }));
@@ -157,6 +196,7 @@ export async function listFailureGroups(): Promise<FailureGroup[]> {
 }
 
 export async function listDeferredJobs(): Promise<JobView[]> {
+  if (usePodio) return [];
   return store.jobs.filter((j) => j.status === "deferred").map(toView);
 }
 
@@ -165,7 +205,8 @@ export async function listDeferredJobs(): Promise<JobView[]> {
 /* -------------------------------------------------------------------------- */
 
 export async function getQueueStats(): Promise<QueueStats> {
-  const count = (status: Job["status"]) => store.jobs.filter((j) => j.status === status).length;
+  const jobs = usePodio ? (await podioSnapshot()).jobs : store.jobs;
+  const count = (status: Job["status"]) => jobs.filter((j) => j.status === status).length;
 
   return {
     queued: count("queued"),
@@ -173,13 +214,17 @@ export async function getQueueStats(): Promise<QueueStats> {
     published: count("published"),
     failed: count("failed"),
     deferred: count("deferred"),
-    total: store.jobs.length,
+    total: jobs.length,
   };
 }
 
 export async function getPlatformBreakdown(): Promise<PlatformBreakdownRow[]> {
-  return platformFixtures.map((platform) => {
-    const forPlatform = store.jobs.filter((j) => j.platformId === platform.id);
+  const snapshot = usePodio ? await podioSnapshot() : null;
+  const platforms = snapshot ? snapshot.platforms : platformFixtures;
+  const jobs = snapshot ? snapshot.jobs : store.jobs;
+
+  return platforms.map((platform) => {
+    const forPlatform = jobs.filter((j) => j.platformId === platform.id);
     return {
       platform,
       queued: forPlatform.filter((j) => j.status === "queued").length,
@@ -195,10 +240,22 @@ export async function getPlatformBreakdown(): Promise<PlatformBreakdownRow[]> {
 /* -------------------------------------------------------------------------- */
 
 export async function getWorkerStatus(): Promise<WorkerStatus> {
+  if (usePodio) {
+    // There is no worker process yet; saying so beats showing a fixture's idle state.
+    return {
+      state: "stopped",
+      stoppedReason: "Worker not implemented yet — dashboard is reading Podio directly.",
+      lastPollAt: null,
+      currentJobId: null,
+      dashlaneSessionExpiresAt: null,
+      vpnConnected: false,
+    };
+  }
   return store.worker;
 }
 
 export async function listOperatorGates(): Promise<OperatorGate[]> {
+  if (usePodio) return [];
   return store.gates.filter((g) => !g.verifiedAt);
 }
 
@@ -215,6 +272,8 @@ function touch(job: Job) {
  * `queued` — the engine never does it on its own.
  */
 export async function retryJobs(ids: string[]): Promise<number> {
+  if (usePodio) requiresAppwrite("Retrying a job");
+
   let moved = 0;
 
   for (const id of ids) {
@@ -235,6 +294,8 @@ export async function retryJobs(ids: string[]): Promise<number> {
 
 /** Permanently exclude jobs from selection — for work a human will finish by hand. */
 export async function dismissJobs(ids: string[]): Promise<number> {
+  if (usePodio) requiresAppwrite("Dismissing a job");
+
   let dismissed = 0;
 
   for (const id of ids) {
@@ -258,6 +319,8 @@ export async function dismissJobs(ids: string[]): Promise<number> {
  * (docs/features/11-runtime-architecture.md).
  */
 export async function confirmGate(gateId: string): Promise<void> {
+  if (usePodio) requiresAppwrite("Confirming an operator gate");
+
   const gate = store.gates.find((g) => g.id === gateId);
   if (!gate) return;
 

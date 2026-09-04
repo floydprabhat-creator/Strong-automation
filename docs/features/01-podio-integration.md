@@ -45,7 +45,10 @@ A job is eligible for automation when **all** of:
 1. `Status` = **`Ready to Post`**
 2. `Assigned To` is **empty** OR = **`Rubico`**
    *(explicitly excludes jobs assigned to named humans, and to `Playwright`)*
-3. `Due By` falls in the **current month**
+3. `Platform` is one of the five in scope — Dealer.com, Apollo, Dealer eProcess,
+   AutoGo, Fox Dealer ([06](06-platform-adapters.md)). Enforced in the query, so
+   jobs on the other 22 dropdown options are never fetched.
+4. `Due By` falls in the **current month**
    — **fallback:** if no eligible jobs remain for the current month, move to
    **next month's** jobs.
 

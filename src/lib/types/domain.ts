@@ -11,7 +11,14 @@
 /* Platforms & dealerships                                                    */
 /* -------------------------------------------------------------------------- */
 
-/** Adapter implementations. Auto Go and Fox Dealer deliberately share `wordpress`. */
+/**
+ * Adapter implementations. Auto Go and Fox Dealer deliberately share `wordpress`.
+ *
+ * These four cover the five in-scope platforms and nothing else. The live Podio
+ * dropdown holds 27 options — including high-volume ones like Dealer Inspire and
+ * DealerOn — which are deliberately out of scope and filtered out before they
+ * reach the app (docs/features/06-platform-adapters.md).
+ */
 export type AdapterKey = "dealercom" | "apollo" | "eprocess" | "wordpress";
 
 export type PublishMode = "api" | "playwright";
@@ -101,6 +108,13 @@ export interface Job {
   pageType: string;
   /** Podio `Due By`, drives current-month / next-month selection. */
   dueBy: string;
+  /**
+   * Podio `Assigned To`, which doubles as the claim/lock: `Rubico` means the
+   * automation holds it, empty means it is back in the human pool
+   * (docs/features/01-podio-integration.md). Optional because it is Podio's
+   * state, not the engine's.
+   */
+  podioAssignee?: string | null;
   status: JobStatus;
   /** Pinned at job start; all reads happen at this SHA. */
   gitCommitHash: string | null;

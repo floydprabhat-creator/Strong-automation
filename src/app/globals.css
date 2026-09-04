@@ -2,101 +2,73 @@
 
 /* ---------------------------------------------------------------------------
    Design tokens
-   Light values on :root, dark overrides in the media query below.
+   Each token carries both themes via light-dark(); see :root below.
    `@theme inline` maps them to Tailwind utilities (bg-surface, text-muted, ...)
    so every utility resolves to the live variable and follows the theme.
 --------------------------------------------------------------------------- */
 
 :root {
+  /*
+   * One definition per token: `light-dark()` picks the value from the active
+   * color scheme, so there is no second palette to keep in sync. The scheme is
+   * the system preference by default, and `data-theme` on <html> overrides it
+   * (set by ThemeToggle, and pre-applied by the inline script in layout.tsx).
+   */
+  color-scheme: light dark;
+
   /* Surfaces */
-  --canvas: #f7f8fa;
-  --surface: #ffffff;
-  --surface-2: #f2f4f7;
-  --surface-3: #e9ecf1;
+  --canvas: light-dark(#f7f8fa, #0b0e13);
+  --surface: light-dark(#ffffff, #12161d);
+  --surface-2: light-dark(#f2f4f7, #181d26);
+  --surface-3: light-dark(#e9ecf1, #1f2530);
 
   /* Lines */
-  --line: #e3e7ee;
-  --line-strong: #cfd6e0;
+  --line: light-dark(#e3e7ee, #242b36);
+  --line-strong: light-dark(#cfd6e0, #333c4a);
 
   /* Text */
-  --ink: #12171f;
-  --ink-muted: #5a6472;
-  --ink-subtle: #8b94a3;
-  --ink-inverse: #ffffff;
+  --ink: light-dark(#12171f, #e8ecf2);
+  --ink-muted: light-dark(#5a6472, #9aa5b4);
+  --ink-subtle: light-dark(#8b94a3, #6d7887);
+  --ink-inverse: light-dark(#ffffff, #0b0e13);
 
   /* Brand / interactive */
-  --accent: #2f6feb;
-  --accent-hover: #2560d4;
-  --accent-soft: #e8f0fe;
-  --accent-ink: #1a4fb8;
+  --accent: light-dark(#2f6feb, #5b8def);
+  --accent-hover: light-dark(#2560d4, #6f9bf2);
+  --accent-soft: light-dark(#e8f0fe, #16233b);
+  --accent-ink: light-dark(#1a4fb8, #9dbcf8);
 
   /* Semantic — surfaces are tinted backgrounds for badges/banners */
-  --ok: #0f8a5f;
-  --ok-soft: #e3f6ed;
-  --ok-ink: #0a6b49;
+  --ok: light-dark(#0f8a5f, #38b183);
+  --ok-soft: light-dark(#e3f6ed, #0f2620);
+  --ok-ink: light-dark(#0a6b49, #6fd3a8);
 
-  --warn: #b7791f;
-  --warn-soft: #fdf3e0;
-  --warn-ink: #8a5a12;
+  --warn: light-dark(#b7791f, #d99e3f);
+  --warn-soft: light-dark(#fdf3e0, #2a1f0e);
+  --warn-ink: light-dark(#8a5a12, #e8bd74);
 
-  --danger: #d0342c;
-  --danger-soft: #fdeceb;
-  --danger-ink: #a32620;
+  --danger: light-dark(#d0342c, #e8635a);
+  --danger-soft: light-dark(#fdeceb, #2c1413);
+  --danger-ink: light-dark(#a32620, #f09a93);
 
-  --info: #4b5bd6;
-  --info-soft: #eceefc;
-  --info-ink: #3a48ad;
+  --info: light-dark(#4b5bd6, #7a86e8);
+  --info-soft: light-dark(#eceefc, #1a1d38);
+  --info-ink: light-dark(#3a48ad, #a8b1f2);
 
-  --neutral-soft: #eef1f5;
-  --neutral-ink: #4a5462;
+  --neutral-soft: light-dark(#eef1f5, #1c222b);
+  --neutral-ink: light-dark(#4a5462, #a7b1c0);
 
   /* Elevation */
-  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
-  --shadow-md: 0 4px 12px rgb(16 24 40 / 0.08);
+  --shadow-sm: 0 1px 2px light-dark(rgb(16 24 40 / 0.04), rgb(0 0 0 / 0.3)), 0 1px 3px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.3));
+  --shadow-md: 0 4px 12px light-dark(rgb(16 24 40 / 0.08), rgb(0 0 0 / 0.4));
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --canvas: #0b0e13;
-    --surface: #12161d;
-    --surface-2: #181d26;
-    --surface-3: #1f2530;
+:root[data-theme="light"] {
+  color-scheme: light;
+}
 
-    --line: #242b36;
-    --line-strong: #333c4a;
-
-    --ink: #e8ecf2;
-    --ink-muted: #9aa5b4;
-    --ink-subtle: #6d7887;
-    --ink-inverse: #0b0e13;
-
-    --accent: #5b8def;
-    --accent-hover: #6f9bf2;
-    --accent-soft: #16233b;
-    --accent-ink: #9dbcf8;
-
-    --ok: #38b183;
-    --ok-soft: #0f2620;
-    --ok-ink: #6fd3a8;
-
-    --warn: #d99e3f;
-    --warn-soft: #2a1f0e;
-    --warn-ink: #e8bd74;
-
-    --danger: #e8635a;
-    --danger-soft: #2c1413;
-    --danger-ink: #f09a93;
-
-    --info: #7a86e8;
-    --info-soft: #1a1d38;
-    --info-ink: #a8b1f2;
-
-    --neutral-soft: #1c222b;
-    --neutral-ink: #a7b1c0;
-
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 14px rgb(0 0 0 / 0.4);
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -155,6 +127,32 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/*
+ * Theme-toggle icons. Tailwind's `dark:` variant keys off prefers-color-scheme
+ * alone, which can't see the `data-theme` override, so the three states —
+ * system, forced light, forced dark — are spelled out here. Doing it in CSS
+ * rather than in React keeps the icon correct on first paint.
+ */
+.theme-icon-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-icon-dark {
+    display: block;
+  }
+  :root:not([data-theme="light"]) .theme-icon-light {
+    display: none;
+  }
+}
+
+:root[data-theme="dark"] .theme-icon-dark {
+  display: block;
+}
+:root[data-theme="dark"] .theme-icon-light {
+  display: none;
 }
 
 /* Tabular figures for dense numeric columns in tables. */

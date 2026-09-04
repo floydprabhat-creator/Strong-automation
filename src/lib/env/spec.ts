@@ -363,6 +363,16 @@ export const ENV_SPEC = [
     doc: "docs/features/12-failure-diagnostics.md",
   },
   {
+    name: "DATA_SOURCE",
+    scope: "shared",
+    required: false,
+    secret: false,
+    description:
+      "Where the dashboard reads jobs from: `fixtures` (default) or `podio` (live, read-only — no attempts, logs or retries until Appwrite exists). See src/lib/data/podio-source.ts.",
+    default: "fixtures",
+    doc: "docs/features/11-runtime-architecture.md",
+  },
+  {
     name: "LOG_LEVEL",
     scope: "shared",
     required: false,

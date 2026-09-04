@@ -104,6 +104,13 @@ export default async function JobDetailPage(props: PageProps<"/jobs/[id]">) {
                   <IconExternal size={12} />
                 </a>
               </Definition>
+              {job.podioAssignee !== undefined && (
+                <Definition label="Assigned to (Podio)">
+                  {job.podioAssignee ?? (
+                    <span className="text-ink-subtle">unassigned — free for a human to pick up</span>
+                  )}
+                </Definition>
+              )}
               <Definition label="Due by">
                 {dateOnly(job.dueBy)}{" "}
                 <span className="text-ink-subtle">({monthLabel(job.dueBy)})</span>
