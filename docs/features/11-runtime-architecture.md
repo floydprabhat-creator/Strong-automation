@@ -72,6 +72,23 @@ Therefore:
 - Non-browser work (Podio polling, Git reads, Appwrite writes) can still overlap
   freely — the serialization constraint applies only to the browser stage.
 
+## Browser Launch: Attach, Don't Launch
+
+The worker starts Chrome itself — as an ordinary process with
+`--remote-debugging-port` and `--user-data-dir` — and Playwright attaches with
+`chromium.connectOverCDP()`. It must **not** use `launchPersistentContext`:
+Playwright's launch flags make Chrome delete the Dashlane extension outright
+([04](04-dashlane-credentials.md)), which is fatal to every browser login.
+
+Two consequences for the worker's lifecycle:
+
+- **Start the browser once, not per job.** The vault needs ~6s to become ready
+  after launch, and a locked-looking extension is indistinguishable from a
+  logged-out one. Paying that cost per job also multiplies the chance of racing
+  it.
+- **The single-worker lock covers the browser too.** One profile, one Chrome,
+  one debugging port — a second worker would collide on all three.
+
 ## Job Claiming and Crash Recovery
 
 Appwrite has no multi-document transactions, so claiming needs a lease pattern:

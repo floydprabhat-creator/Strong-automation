@@ -53,11 +53,92 @@ fetch, and it changes how login works across adapters:
   a platform has a usable API, because Dashlane itself is the piece that isn't
   API-accessible — but that path is now viable unattended for ~14-day stretches.
 
+## PROVEN: the mechanics, measured against the live vault
+
+The Phase 0.5 spike (`scripts/dashlane-spike.mts`) ran the full sequence against
+Dealer.com's real sign-in and autofilled both fields from a selection made
+programmatically on `Client Code`. The steps below are what the adapter must do;
+each one was a failure mode found the hard way.
+
+1. **Never let Playwright launch Chrome.** `launchPersistentContext` made Chrome
+   treat the Web Store install as unverifiable and **delete the extension** —
+   reproduced three times, leaving `Extensions/<id>/` empty and its Secure
+   Preferences record stripped to `state=None`. `--load-extension` is no help:
+   Chrome 137+ refuses it. Instead spawn Chrome as an ordinary process with
+   `--remote-debugging-port` and attach with `chromium.connectOverCDP()`. The
+   browser then behaves exactly as it does for a human.
+2. **Wait for the vault to be *ready*, not merely loaded** — about 5–6s after
+   browser start. Before that the content script stamps its attributes on the
+   form but renders no icon, which is indistinguishable from a locked vault.
+   Poll `chrome-extension://<id>/popup/index.html` until it renders real content.
+3. **Click the in-field icon**, which Dashlane injects as
+   `span[data-dashlanecreated]` (there is one per field; pick the one whose box
+   sits inside the username field). Do **not** select on `data-dashlane-label` —
+   that marks page elements Dashlane has labelled, and clicking one hit the
+   site's "Forgot username" link.
+4. **Wait ~3–4s for the picker frame**, which loads at
+   `chrome-extension://<id>/content/webui/index.html?type=autofill-dropdown`.
+   Its entries are ordinary DOM nodes and are readable and clickable.
+5. **Match the entry on `Client Code`.** Vault entries are named with it —
+   `"seostrongautmotive: GDB - Golling CDJR Bloomfield"`, `"strongautomotive26:
+   HST - DDC Login"` — the same code Podio carries on every job. There is no
+   search box to drive; a text match is enough.
+6. **Zero matches must fail the job as `config`.** With ~17 pages of credentials
+   in the vault, a near-miss is a login to the wrong dealership.
+
+Selecting the entry fills both fields, and the value survives Cox's two-step
+flow (username → Next → password screen).
+
+## Hard Safety Rails (non-negotiable)
+
+The automation touches live dealership accounts. Two things it must never do,
+enforced in code rather than by care:
+
+1. **Never enter an account-recovery or reset flow.** No navigation whose path or
+   query matches `forgot|recover|reset|deactivate|cancel-account`. An early
+   version of this spike landed on Dealer.com's *"Recover username"* screen by
+   clicking an element Dashlane had labelled — a recovery flow can invalidate a
+   credential that every other job for that dealership depends on.
+2. **Never delete or remove anything, and never sign out.** No click on a control
+   whose text or `aria-label` matches
+   `forgot|recover|reset|delete|remove|deactivate|sign out|log out`.
+
+Both are implemented as a navigation listener and a `safeClick()` wrapper in
+`scripts/dashlane-spike.mts`, and belong in the shared browser layer the adapters
+sit on — not in each adapter, where one omission is one wrong click. A violation
+aborts the job; it is never a warning to be logged and stepped over.
+
+Also: **the icon is intermittent.** Polling for `[data-dashlanecreated]` and
+re-focusing the field between tries took the spike from ~50% to 3/3 successful
+runs. When the icon never appears within ~24s, that is an `auth`-class failure
+([07](07-publishing-job-engine.md)) — which trips the circuit breaker rather than
+draining the queue — not a reason to continue.
+
 ## Open Questions to Resolve Before Building
 
 - Who owns re-authenticating the automation profile's Dashlane session every
   ~14 days, and should the dashboard surface a "Dashlane session expires on X"
   warning so it doesn't lapse mid-run unnoticed?
+- **RESOLVED for Dealer.com — selection is keyed on `Client Code`.** The operator
+  types the client code (e.g. `BFB`), Dashlane filters its dropdown to the
+  matching entries, and the right one is selected. That makes credential choice
+  **deterministic given data Podio already supplies** — the `client-code` field
+  is on every job item ([01](01-podio-integration.md)) — rather than a human
+  judgement call. The open question is no longer *which* credential, but the
+  mechanical one: can Playwright drive the extension's dropdown (or its popup
+  vault) to make that same selection? That is what the Phase 0.5 spike must
+  answer.
+
+- **⚠️ New requirement: one credential can cover several dealerships.** Some
+  Dealer.com logins map to a single account, others open a portal containing
+  multiple dealer accounts. So authentication is not the end of the story — after
+  login, the adapter must select the correct dealership *inside* the CMS before
+  publishing anything. Getting this wrong publishes a correct page to the wrong
+  dealership, which is the silent, worst-case failure this system exists to avoid
+  ([02](02-git-integration.md) makes the same argument about file matching).
+  `verifyPage` ([08](08-verification.md)) must therefore confirm the published URL
+  belongs to the job's `Client URL` domain, not merely that a page went live.
+
 - **How does autofill disambiguate on the shared-portal platforms?** The five
   platforms split in two here ([06](06-platform-adapters.md)):
   - **WordPress (Auto Go, Fox Dealer)** — login is per-dealership

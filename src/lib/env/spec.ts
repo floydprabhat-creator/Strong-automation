@@ -258,6 +258,16 @@ export const ENV_SPEC = [
     doc: "docs/features/04-dashlane-credentials.md",
   },
   {
+    name: "DASHLANE_EXTENSION_DIR",
+    scope: "worker",
+    required: false,
+    secret: false,
+    description:
+      "Unpacked copy of the Dashlane extension, loaded with --load-extension. Chrome deletes a Web Store install from a Playwright-driven profile; the copy's manifest keeps its `key`, so the extension ID — and the vault storage under it — survive.",
+    example: "~/.strong-automation/dashlane-extension",
+    doc: "docs/features/04-dashlane-credentials.md",
+  },
+  {
     name: "DASHLANE_SESSION_DAYS",
     scope: "worker",
     required: false,

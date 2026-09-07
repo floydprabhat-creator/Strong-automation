@@ -114,6 +114,18 @@ Worth resolving early, because the answer decides whether one adapter or two:
    ([11](11-runtime-architecture.md)) that's better tackled once the pipeline is
    otherwise proven, so a VPN problem is never confused with a pipeline problem.
 
+**Dealer.com specifically: `login()` is two steps, not one.** A single Dashlane
+credential may cover several dealerships ([04](04-dashlane-credentials.md)), so
+after authenticating the adapter must select the job's dealership inside the CMS
+— matched on `Client Code` / `Client URL` from Podio — and fail as `config` if
+that account isn't present. Treat "logged in" and "in the right dealership's
+account" as separate, separately verified states.
+
+**Safety rails live below the adapters, not inside them.** The shared browser
+layer refuses navigation into recovery/reset paths and refuses clicks on
+destructive controls ([04](04-dashlane-credentials.md)). An adapter cannot opt
+out, because one missed case is one wrong click on a live dealership account.
+
 For Playwright-based adapters: keep selectors isolated in the adapter, and write
 `verifyPage` to check actual rendered output (not just "no exception thrown").
 

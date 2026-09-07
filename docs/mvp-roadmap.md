@@ -15,13 +15,13 @@ and demoable before moving to the next — don't build all features in parallel.
 
 ## Phase 0.5 — De-risking spikes (do these before committing to Phase 3)
 Each of these can invalidate an assumption cheaply, and each is currently unproven:
-- [ ] **Dashlane spike:** can Playwright drive a persistent Chrome profile with the
-      Dashlane extension loaded, unlocked via the 14-day session, and autofill a real
-      platform login? This is the highest-risk unknown in the whole build.
-      **Test a shared-portal platform (Dealer.com), not WordPress** — picking the
-      right credential among many on one domain is the part that might not work
-      ([04](features/04-dashlane-credentials.md)); per-dealership WordPress logins
-      would pass this test while hiding the real problem.
+- [x] **Dashlane spike — DONE, and it works.** `scripts/dashlane-spike.mts` drove
+      Dealer.com's real sign-in end to end: extension alive, vault unlocked,
+      picker opened, entry selected by `Client Code`, both fields autofilled.
+      Two constraints came out of it and are binding on the worker: Chrome must
+      be spawned normally and attached to over CDP (Playwright's own launch
+      deletes the extension), and the vault needs ~6s to become ready after
+      launch. Mechanics in [04](features/04-dashlane-credentials.md).
 - [ ] **File-source spike (do this first, it may delete work):** confirm whether the
       `Kiosk`-generated HTML attached to the Podio item is the same artifact as the
       Git file ([02](features/02-git-integration.md)). If yes, the whole Git

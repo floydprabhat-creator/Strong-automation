@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "env:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-env.mts",
-    "podio:auth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/podio-auth.mts"
+    "podio:auth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/podio-auth.mts",
+    "spike:dashlane": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dashlane-spike.mts"
   },
   "dependencies": {
     "@next/env": "^16.3.4",
@@ -23,6 +24,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
